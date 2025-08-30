@@ -4,7 +4,7 @@ import { Node } from "../../../domain/entities/node";
 import { NodeModel } from "../models/node-model";
 import { AppError } from "../../errors/app-error";
 import { ERRORS } from "../../constants/errors";
-import mongoose from "mongoose";
+import mongoose, { ClientSession } from "mongoose";
 
 @injectable()
 export class NodeRepository implements INodeRepository {
@@ -45,7 +45,7 @@ export class NodeRepository implements INodeRepository {
     };
   }
 
-    async update(id: string, updates: Partial<Node>): Promise<Node> {
+  async update(id: string, updates: Partial<Node>): Promise<Node> {
     if (!mongoose.isValidObjectId(id)) {
       throw new AppError(
         ERRORS.INVALID_ID.message,
@@ -69,8 +69,19 @@ export class NodeRepository implements INodeRepository {
   }
 
   async delete(id: string): Promise<void> {
-    const deleteNodeRecursive = async (nodeId: string): Promise<void> => {
-      const node = await NodeModel.findById(nodeId);
+    if (!mongoose.isValidObjectId(id)) {
+      throw new AppError(
+        ERRORS.INVALID_ID.message,
+        ERRORS.INVALID_ID.statusCode,
+        ERRORS.INVALID_ID.code
+      );
+    }
+
+    const session: ClientSession = await NodeModel.startSession();
+    session.startTransaction();
+
+    try {
+      const node = await NodeModel.findById(id).session(session);
       if (!node) {
         throw new AppError(
           ERRORS.NODE_NOT_FOUND.message,
@@ -78,12 +89,42 @@ export class NodeRepository implements INodeRepository {
           ERRORS.NODE_NOT_FOUND.code
         );
       }
-      const children = await NodeModel.find({ parentId: nodeId });
+
+      const nodeIdsToDelete = await this.getDescendantIds(id, session);
+
+      await NodeModel.deleteMany({ _id: { $in: nodeIdsToDelete } }).session(session);
+
+      await session.commitTransaction();
+    } catch (error) {
+      await session.abortTransaction();
+      throw error; 
+    } finally {
+      session.endSession();
+    }
+  }
+
+  private async getDescendantIds(nodeId: string, session: ClientSession): Promise<string[]> {
+    const descendantIds: string[] = [nodeId];
+    const queue: string[] = [nodeId];
+    const visited = new Set<string>();
+
+    while (queue.length > 0) {
+      const currentId = queue.shift()!;
+      if (visited.has(currentId)) continue;
+      visited.add(currentId);
+
+      const children = await NodeModel.find({ parentId: currentId })
+        .select('_id')
+        .session(session)
+        .lean();
+
       for (const child of children) {
-        await deleteNodeRecursive(child._id.toString());
+        const childId = child._id.toString();
+        descendantIds.push(childId);
+        queue.push(childId);
       }
-      await NodeModel.deleteOne({ _id: nodeId });
-    };
-    await deleteNodeRecursive(id);
+    }
+
+    return descendantIds;
   }
 }
