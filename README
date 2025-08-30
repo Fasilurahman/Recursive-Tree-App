@@ -1,15 +1,20 @@
 Recursive Node Tree App
 
-    A full-stack web application for managing a hierarchical node tree with CRUD operations, built with the MERN stack, TypeScript, and a responsive React frontend.
+   A full-stack MERN application for managing a hierarchical tree of nodes, featuring a responsive UI with add, edit, delete functionality. 
+   Built with TypeScript, React, Vite, Tailwind CSS, MongoDB Atlas, and InversifyJS for dependency injection.
 
 
 Features
 
-    Create, update, and delete nodes with parent-child relationships.
-    Collapsible tree visualization.
-    Responsive UI with dark mode toggle.
-    Toast notifications for user actions and errors.
-    Backend-driven error handling (e.g., "Name is required", "Node not found").
+    Hierarchical Tree Structure: Organize nodes in a parent-child hierarchy.
+    Node Operations:
+        Add child nodes.
+        Edit node.
+        Delete nodes and their descendants.
+        Expand/collapse folders.
+    Responsive UI: Clean, animated interface with Tailwind CSS and Framer Motion.
+    Real-time Feedback: Toast notifications (sonner) for success and error messages.
+    Type-Safe: Built with TypeScript for robust type checking.
 
 Tech Stack
 
