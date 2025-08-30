@@ -2,7 +2,7 @@ import axios from 'axios';
 import type { Node } from '../types';
 
 export class ApiService {
-  private baseUrl = 'http://localhost:5000/api/nodes';
+  private baseUrl = import.meta.env.VITE_BACKEND_URL;
 
   async getNodes(): Promise<Node[]> {
     try {
