@@ -73,7 +73,7 @@ const handleEditSubmit = async () => {
     }
   };
 
-  const handleAddChild = async () => {
+const handleAddChild = async () => {
     if (!newChildName.trim()) {
       toast.error('Node name cannot be empty');
       return;
@@ -84,7 +84,11 @@ const handleEditSubmit = async () => {
       toast.success('Node added successfully');
       setNewChildName('');
       setShowAddInput(false);
-      operations.toggleExpanded(node.id);
+
+      console.log(node,'node');
+      if (!node.isExpanded) {
+        operations.toggleExpanded(node.id);
+      }
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Failed to add node');
     } finally {
