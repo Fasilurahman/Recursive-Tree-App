@@ -1,0 +1,41 @@
+Recursive Node Tree App
+
+    A full-stack web application for managing a hierarchical node tree with CRUD operations, built with the MERN stack, TypeScript, and a responsive React frontend.
+
+
+Features
+
+    Create, update, and delete nodes with parent-child relationships.
+    Collapsible tree visualization.
+    Responsive UI with dark mode toggle.
+    Toast notifications for user actions and errors.
+    Backend-driven error handling (e.g., "Name is required", "Node not found").
+
+Tech Stack
+
+    Backend: Node.js, Express.js, TypeScript, MongoDB, InversifyJS
+    Frontend: React, Vite, TypeScript, Tailwind CSS, sonner
+    Architecture: Clean architecture (backend), component-based (frontend)
+
+
+Project Structure
+Backend
+    src/
+    application/ # Use cases
+    domain/ # Entities and interfaces
+    infrastructure/ # Database, DI, errors
+    interfaces/ # Routes and controllers
+    server.ts # Express server
+    app.ts 
+
+Frontend
+    src/
+    components/ # Button, Loader, NodeForm, NodeTree
+    pages/ # Home.tsx
+    hooks/ # useTreeData
+    service/ # API calls 
+    App.tsx # Main app
+    index.css # Tailwind directives
+    types.ts # Node interface
+
+
