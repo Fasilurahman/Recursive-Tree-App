@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { ChevronRight, Plus, Trash2, Edit3, Folder, FolderOpen, FileText } from 'lucide-react';
 import type { Node, TreeOperations } from '../types';
-import { motion } from 'framer-motion';
-import {toast} from 'sonner';
+import { motion, AnimatePresence } from 'framer-motion';
+import { toast } from 'sonner';
 
 interface TreeNodeProps {
   node: Node;
@@ -16,10 +16,27 @@ const TreeNode: React.FC<TreeNodeProps> = ({ node, operations, level = 0 }) => {
   const [isHovered, setIsHovered] = useState(false);
   const [showAddInput, setShowAddInput] = useState(false);
   const [newChildName, setNewChildName] = useState('');
+  const [loading, setLoading] = useState(false);
 
   const hasChildren = node.children && node.children.length > 0;
   const isFolder = hasChildren || showAddInput;
   const indentSize = Math.min(level * (window.innerWidth < 640 ? 12 : 16), 96);
+
+  const LoadingSpinner: React.FC = () => (
+    <motion.div
+      className="flex items-center justify-center absolute inset-0 bg-white/80 dark:bg-gray-800/80 rounded-xl z-20"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.2 }}
+    >
+      <motion.div
+        className="w-6 h-6 border-4 border-t-blue-600 border-gray-200 dark:border-t-blue-400 dark:border-gray-700 rounded-full"
+        animate={{ rotate: 360 }}
+        transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
+      />
+    </motion.div>
+  );
 
   const handleToggleExpanded = () => {
     if (hasChildren || showAddInput) {
@@ -27,14 +44,25 @@ const TreeNode: React.FC<TreeNodeProps> = ({ node, operations, level = 0 }) => {
     }
   };
 
-  const handleEditSubmit = () => {
-    if (!editValue.trim()) {
-      toast.error('Node name cannot be empty');
-      return;
-    }
-    operations.updateNode(node.id, editValue.trim(), node.parentId);
+const handleEditSubmit = async () => {
+  if (!editValue.trim()) {
+    toast.error('Node name cannot be empty');
+    return;
+  }
+  setLoading(true);
+  try {
+    await operations.updateNode(node.id, editValue.trim(), node.parentId);
+    toast.success('Node updated successfully');
     setIsEditing(false);
-  };
+  } catch (error) {
+    toast.error(error instanceof Error ? error.message : 'Failed to update node');
+  } finally {
+    setTimeout(() => {
+      setLoading(false);
+    }, 2000);
+  }
+};
+
 
   const handleEditKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter') {
@@ -45,12 +73,22 @@ const TreeNode: React.FC<TreeNodeProps> = ({ node, operations, level = 0 }) => {
     }
   };
 
-  const handleAddChild = () => {
-    if (newChildName.trim()) {
-      operations.addNode(node.id, newChildName.trim());
+  const handleAddChild = async () => {
+    if (!newChildName.trim()) {
+      toast.error('Node name cannot be empty');
+      return;
+    }
+    setLoading(true);
+    try {
+      await operations.addNode(node.id, newChildName.trim());
+      toast.success('Node added successfully');
       setNewChildName('');
       setShowAddInput(false);
       operations.toggleExpanded(node.id);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Failed to add node');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -60,6 +98,18 @@ const TreeNode: React.FC<TreeNodeProps> = ({ node, operations, level = 0 }) => {
     } else if (e.key === 'Escape') {
       setNewChildName('');
       setShowAddInput(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    setLoading(true);
+    try {
+      await operations.deleteNode(node.id);
+      toast.success('Node deleted successfully');
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Failed to delete node');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -73,6 +123,9 @@ const TreeNode: React.FC<TreeNodeProps> = ({ node, operations, level = 0 }) => {
         whileHover={{ y: -2 }}
         transition={{ duration: 0.2 }}
       >
+        <AnimatePresence>
+          {loading && <LoadingSpinner />}
+        </AnimatePresence>
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
           <div className="flex min-w-[100px] sm:min-w-[150px] flex-1 items-center space-x-2 sm:space-x-3">
             {/* Expand/Collapse Button */}
@@ -113,12 +166,13 @@ const TreeNode: React.FC<TreeNodeProps> = ({ node, operations, level = 0 }) => {
                   onKeyDown={handleEditKeyPress}
                   className="min-w-0 flex-1 rounded border-none bg-transparent px-2 py-1 font-medium text-gray-900 outline-none focus:ring-2 focus:ring-blue-500 dark:text-gray-100 text-sm sm:text-base"
                   autoFocus
+                  disabled={loading}
                 />
                 <div className="flex space-x-2 w-full sm:w-auto">
                   <button
                     onClick={handleEditSubmit}
                     className="rounded-lg bg-blue-600 px-3 py-2 font-medium text-white shadow-md transition-all duration-200 hover:bg-blue-700 hover:shadow-lg disabled:opacity-50 text-sm sm:text-base"
-                    disabled={!editValue.trim()}
+                    disabled={loading || !editValue.trim()}
                   >
                     Save
                   </button>
@@ -128,6 +182,7 @@ const TreeNode: React.FC<TreeNodeProps> = ({ node, operations, level = 0 }) => {
                       setIsEditing(false);
                     }}
                     className="rounded-lg bg-gray-200 px-3 py-2 font-medium text-gray-700 transition-all duration-200 hover:bg-gray-300 dark:bg-gray-600 dark:text-gray-300 dark:hover:bg-gray-500 text-sm sm:text-base"
+                    disabled={loading}
                   >
                     Cancel
                   </button>
@@ -156,6 +211,7 @@ const TreeNode: React.FC<TreeNodeProps> = ({ node, operations, level = 0 }) => {
                 onClick={() => setShowAddInput(true)}
                 className="flex h-8 w-8 sm:h-9 sm:w-9 items-center justify-center rounded-full text-green-600 transition-all duration-200 hover:scale-105 hover:bg-gradient-to-r hover:from-green-100 hover:to-green-200 dark:hover:bg-green-900/30"
                 title="Add child node"
+                disabled={loading}
               >
                 <Plus size={16} className="sm:w-5 sm:h-5" />
               </button>
@@ -163,13 +219,15 @@ const TreeNode: React.FC<TreeNodeProps> = ({ node, operations, level = 0 }) => {
                 onClick={() => setIsEditing(true)}
                 className="flex h-8 w-8 sm:h-9 sm:w-9 items-center justify-center rounded-full text-blue-600 transition-all duration-200 hover:scale-105 hover:bg-gradient-to-r hover:from-blue-100 hover:to-blue-200 dark:hover:bg-blue-900/30"
                 title="Edit node"
+                disabled={loading}
               >
                 <Edit3 size={16} className="sm:w-5 sm:h-5" />
               </button>
               <button
-                onClick={() => operations.deleteNode(node.id)}
+                onClick={handleDelete}
                 className="flex h-8 w-8 sm:h-9 sm:w-9 items-center justify-center rounded-full text-red-600 transition-all duration-200 hover:scale-105 hover:bg-gradient-to-r hover:from-red-100 hover:to-red-200 dark:hover:bg-red-900/30"
                 title="Delete node"
+                disabled={loading}
               >
                 <Trash2 size={16} className="sm:w-5 sm:h-5" />
               </button>
@@ -194,12 +252,13 @@ const TreeNode: React.FC<TreeNodeProps> = ({ node, operations, level = 0 }) => {
                 placeholder="Enter child node name..."
                 className="flex-1 rounded-lg border border-gray-300/50 bg-white px-3 py-2 text-gray-900 placeholder-gray-500 focus:border-transparent focus:ring-2 focus:ring-blue-500 dark:border-gray-600/50 dark:bg-gray-700 dark:text-gray-100 dark:placeholder-gray-400 transition-all duration-200 text-sm sm:text-base"
                 autoFocus
+                disabled={loading}
               />
               <div className="flex space-x-2 w-full sm:w-auto">
                 <button
                   onClick={handleAddChild}
                   className="rounded-lg bg-blue-600 px-3 py-2 font-medium text-white shadow-md transition-all duration-200 hover:bg-blue-700 hover:shadow-lg disabled:opacity-50 text-sm sm:text-base"
-                  disabled={!newChildName.trim()}
+                  disabled={loading || !newChildName.trim()}
                 >
                   Add
                 </button>
@@ -209,6 +268,7 @@ const TreeNode: React.FC<TreeNodeProps> = ({ node, operations, level = 0 }) => {
                     setNewChildName('');
                   }}
                   className="rounded-lg bg-gray-200 px-3 py-2 font-medium text-gray-700 transition-all duration-200 hover:bg-gray-300 dark:bg-gray-600 dark:text-gray-300 dark:hover:bg-gray-500 text-sm sm:text-base"
+                  disabled={loading}
                 >
                   Cancel
                 </button>

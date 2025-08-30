@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { Plus, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { Node, TreeOperations } from '../types';
@@ -15,18 +15,42 @@ interface TreeViewProps {
 const TreeView: React.FC<TreeViewProps> = ({ nodes, operations, loading = false }) => {
   const [showRootInput, setShowRootInput] = useState(false);
   const [newRootName, setNewRootName] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
 
-const handleAddRoot = () => {
-  console.log(newRootName,'newRootName');
-  if (!newRootName.trim()) {
-    toast.error('Root name cannot be empty');
-    return;
-  }
+  const LoadingSpinner: React.FC = () => (
+    <motion.div
+      className="flex items-center justify-center absolute inset-0 bg-white/80 dark:bg-gray-800/80 rounded-2xl z-20"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.2 }}
+    >
+      <motion.div
+        className="w-6 h-6 border-4 border-t-blue-600 border-gray-200 dark:border-t-blue-400 dark:border-gray-700 rounded-full"
+        animate={{ rotate: 360 }}
+        transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
+      />
+    </motion.div>
+  );
 
-  operations.addNode(null, newRootName.trim());
-  setNewRootName('');
-  setShowRootInput(false);
-};
+  const handleAddRoot = useCallback(async () => {
+    if (isLoading) return; // Prevent re-entrant calls
+    if (!newRootName.trim()) {
+      toast.error('Root name cannot be empty');
+      return;
+    }
+    setIsLoading(true);
+    try {
+      await operations.addNode(null, newRootName.trim());
+      toast.success('Root node added successfully');
+      setNewRootName('');
+      setShowRootInput(false);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Failed to add root node');
+    } finally {
+      setIsLoading(false);
+    }
+  }, [newRootName, isLoading, operations]);
 
   const handleRootKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter') {
@@ -79,12 +103,15 @@ const handleAddRoot = () => {
         <AnimatePresence>
           {showRootInput ? (
             <motion.div
-              className="rounded-2xl border border-gray-200/50 bg-white/80 p-4 sm:p-6 shadow-xl backdrop-blur-sm dark:border-gray-700/50 dark:bg-gray-800/80 w-full sm:w-auto"
+              className="relative rounded-2xl border border-gray-200/50 bg-white/80 p-4 sm:p-6 shadow-xl backdrop-blur-sm dark:border-gray-700/50 dark:bg-gray-800/80 w-full sm:w-auto"
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
               transition={{ duration: 0.3 }}
             >
+              <AnimatePresence>
+                {isLoading && <LoadingSpinner />}
+              </AnimatePresence>
               <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:space-x-4">
                 <div className="relative flex-1">
                   <motion.input
@@ -95,6 +122,7 @@ const handleAddRoot = () => {
                     placeholder="Enter root node name..."
                     className="w-full rounded-xl border border-gray-300/50 bg-gradient-to-r from-white to-gray-50 px-4 py-3 text-gray-900 placeholder-gray-400 focus:border-transparent focus:ring-2 focus:ring-blue-400/50 dark:border-gray-600/50 dark:bg-gradient-to-r dark:from-gray-700 dark:to-gray-600 dark:text-gray-100 dark:placeholder-gray-400 pr-12 shadow-sm transition-all duration-300"
                     autoFocus
+                    disabled={isLoading}
                     whileFocus={{ boxShadow: '0 0 15px rgba(59, 130, 246, 0.3)' }}
                   />
                   {newRootName && (
@@ -103,6 +131,7 @@ const handleAddRoot = () => {
                       className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 transition-colors duration-200 hover:text-indigo-600 dark:hover:text-indigo-400"
                       whileHover={{ scale: 1.2, rotate: 90 }}
                       whileTap={{ scale: 0.9 }}
+                      disabled={isLoading}
                     >
                       <X size={20} />
                     </motion.button>
@@ -113,7 +142,7 @@ const handleAddRoot = () => {
                     onClick={handleAddRoot}
                     variant="primary"
                     size="md"
-                    // disabled={!newRootName.trim()}
+                    disabled={isLoading || !newRootName.trim()}
                     className="flex items-center space-x-2"
                   >
                     <motion.span
@@ -131,6 +160,7 @@ const handleAddRoot = () => {
                     }}
                     variant="secondary"
                     size="md"
+                    disabled={isLoading}
                     className="flex items-center space-x-2"
                   >
                     <motion.span
@@ -149,6 +179,7 @@ const handleAddRoot = () => {
               onClick={() => setShowRootInput(true)}
               variant="primary"
               size="md"
+              disabled={isLoading}
               className="relative flex items-center space-x-2"
             >
               <motion.span

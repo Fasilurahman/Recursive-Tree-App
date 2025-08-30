@@ -63,7 +63,6 @@ export function useNodes() {
       console.log(newNode,'newNode');
       const flatNodes = await apiService.getNodes();
       setNodes(buildTree(flatNodes));
-      toast.success('Node added successfully');
     } catch (err: any) {
       console.error(err);
       toast.error(err.message);
@@ -75,7 +74,6 @@ export function useNodes() {
       await apiService.updateNode(id, name, parentId);
       const flatNodes = await apiService.getNodes();
       setNodes(buildTree(flatNodes));
-      toast.success('Node updated successfully');
     } catch (err: any) {
       console.error(err);
       toast.error(err.message);
@@ -87,7 +85,6 @@ export function useNodes() {
       await apiService.deleteNode(id);
       const flatNodes = await apiService.getNodes();
       setNodes(buildTree(flatNodes));
-      toast.success('Node deleted successfully');
     } catch (err: any) {
       console.error(err);
       toast.error(err.message);
